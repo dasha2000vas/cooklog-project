@@ -4,11 +4,9 @@ from django.shortcuts import get_object_or_404
 from djoser.views import UserViewSet
 from rest_framework import filters, status
 from rest_framework.decorators import action
-from rest_framework.mixins import ListModelMixin
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.viewsets import GenericViewSet, ModelViewSet
-from rest_framework_csv.renderers import CSVRenderer
+from rest_framework.viewsets import ModelViewSet
 
 from .filters import RecipeFilter
 from .mixins import (
@@ -19,7 +17,6 @@ from .renderes import ShoppingCartRenderer
 from .serializers import (
     IngredientSerializer,
     FavoriteSerializer,
-    RecipeAddSerializer,
     RecipeGetSerializer,
     RecipePostSerializer,
     ShoppingCartSerializer,
@@ -29,9 +26,8 @@ from .serializers import (
     )
 from recipes.models import (
     Ingredient, IngredientRecipe, AddedToFavorite,
-    Recipe, ShoppingСart, Tag
+    Recipe, ShoppingСart, Subscribe, Tag
 )
-from recipes.models import Subscribe
 
 User = get_user_model()
 
@@ -85,9 +81,16 @@ class RecipeViewSet(ModelViewSet):
         elif self.request.method == 'POST' or 'PATCH':
             return RecipePostSerializer
 
-    def get_queryset(self):
-        if self.request.user.
-        return super().get_queryset()
+    def filter_queryset(self, queryset):
+        if (
+            self.request.user.is_anonymous
+            and (
+                'is_in_shopping_cart' in self.request.query_params
+                or 'is_favorited' in self.request.query_params
+            )
+        ):
+            return super().get_queryset()
+        return super().filter_queryset(queryset)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

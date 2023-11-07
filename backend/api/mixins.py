@@ -42,6 +42,11 @@ class CreateDestroyAddViewSet(
         serializer.save(user=self.request.user)
 
     def delete(self, request, *args, **kwargs):
+        get_object_or_404(Recipe, id=self.kwargs['recipe_pk'])
+        try:
+            self.get_object()
+        except Http404:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
         return self.destroy(request, *args, **kwargs)
 
 
@@ -68,6 +73,7 @@ class CreateDestroySubscribeViewSet(
         serializer.save(user=self.request.user)
 
     def delete(self, request, *args, **kwargs):
+        get_object_or_404(User, id=self.kwargs['user_pk'])
         try:
             self.get_object()
         except Http404:

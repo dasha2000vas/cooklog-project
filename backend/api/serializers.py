@@ -13,9 +13,8 @@ from rest_framework.validators import UniqueTogetherValidator
 
 from recipes.models import (
     Ingredient, IngredientRecipe, AddedToFavorite,
-    Recipe, ShoppingСart, Tag
+    Recipe, ShoppingСart, Subscribe, Tag
 )
-from recipes.models import Subscribe
 
 User = get_user_model()
 
@@ -169,7 +168,7 @@ class RecipePostSerializer(serializers.ModelSerializer):
             'author',
             'pub_date',
         )
-    
+
     def validate(self, attrs):
         try:
             attrs['ingredients']

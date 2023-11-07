@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 import django_filters as filters
 
-from recipes.models import Recipe, ShoppingСart, Tag
+from recipes.models import Recipe
 
 BOOLEAN_CHOICES = ((0, 0), (1, 1))
 TAG_CHOICES = (
@@ -12,7 +12,11 @@ User = get_user_model()
 
 
 class RecipeFilter(filters.FilterSet):
-    is_favorited = filters.ChoiceFilter(choices=BOOLEAN_CHOICES)
+    is_favorited = filters.ChoiceFilter(
+        field_name='is_favorited',
+        choices=BOOLEAN_CHOICES,
+        method='filter_favorite'
+    )
     is_in_shopping_cart = filters.ChoiceFilter(
         field_name='is_in_shopping_cart',
         choices=BOOLEAN_CHOICES,
@@ -40,3 +44,10 @@ class RecipeFilter(filters.FilterSet):
             return Recipe.objects.filter(shopping_cart=user)
         elif not int(value):
             return Recipe.objects.exclude(shopping_cart=user)
+
+    def filter_favorite(self, queryset, name, value):
+        user = self.request.user
+        if int(value):
+            return Recipe.objects.filter(favorite=user)
+        elif not int(value):
+            return Recipe.objects.exclude(favorite=user)
