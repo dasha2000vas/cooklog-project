@@ -79,7 +79,7 @@ class Recipe(models.Model):
         through='AddedToFavorite',
         related_name='favorite_recipes',
         verbose_name='Избранное'
-        )
+    )
     shopping_cart = models.ManyToManyField(
         User,
         through='ShoppingСart',

@@ -26,7 +26,7 @@ class RecipeFilter(filters.FilterSet):
         field_name='author',
         queryset=User.objects.all(),
         to_field_name='id'
-        )
+    )
     tags = filters.MultipleChoiceFilter(
         field_name='tags__slug',
         choices=TAG_CHOICES

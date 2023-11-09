@@ -23,7 +23,7 @@ from .serializers import (
     SubscribeSerializer,
     TagSerializer,
     UserSubscribeSerializer
-    )
+)
 from recipes.models import (
     Ingredient, IngredientRecipe, AddedToFavorite,
     Recipe, ShoppingСart, Subscribe, Tag
