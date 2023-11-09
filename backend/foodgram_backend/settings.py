@@ -1,13 +1,19 @@
+# flake8: noqa
+import os
+
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-SECRET_KEY = 'django-insecure-l(x#71wyreo)r1(45h0dr9n-8^6u^x3zgfzw&g8a8c6t&xrop#'
+SECRET_KEY = os.getenv(
+    'DJANGO_SECRET_KEY',
+    'zjp9%de+9i*zpa20h-z80lulf@0+@q5t&zl9n7zmfx_r1w1*))'
+)
 
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'None').lower() == 'true'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1 localhost').split()
 
 
 INSTALLED_APPS = [
@@ -21,7 +27,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'django_filters',
     'djoser',
-    'corsheaders',
     'api.apps.ApiConfig',
     'recipes.apps.RecipesConfig',
     'users.apps.UsersConfig',
@@ -60,8 +65,12 @@ WSGI_APPLICATION = 'foodgram_backend.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('POSTGRES_DB', 'django'),
+        'USER': os.getenv('POSTGRES_USER', 'django'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
+        'HOST': os.getenv('DB_HOST', ''),
+        'PORT': os.getenv('DB_PORT', 5432)
     }
 }
 
@@ -94,6 +103,11 @@ USE_TZ = True
 
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'collected_static'
+
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = '/var/www/foodgram/media/'
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -101,7 +115,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+        'rest_framework.permissions.AllowAny',
     ],
 
     'DEFAULT_AUTHENTICATION_CLASSES': [

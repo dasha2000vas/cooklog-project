@@ -35,10 +35,13 @@ User = get_user_model()
 class CustomUserViewSet(UserViewSet):
     http_method_names = ['get', 'post']
 
-    def get_permissions(self):
-        if self.action == 'me' and self.request.method == 'GET':
-            return (IsAuthenticated(),)
-        return super().get_permissions()
+    @action(
+        detail=False,
+        methods=['get'],
+        permission_classes=(IsAuthenticated,)
+    )
+    def me(self, request, *args, **kwargs):
+        return super().me(request, *args, **kwargs)
 
     @action(
         detail=False,
@@ -129,7 +132,7 @@ class RecipeViewSet(ModelViewSet):
         renderer_classes=(ShoppingCartRenderer,)
     )
     def download_shopping_cart(self, request):
-        recipes = request.user.favorite_recipes.all()
+        recipes = request.user.shopping_cart.all()
         cart = []
         for recipe in recipes:
             ingredients = recipe.ingredients.all()

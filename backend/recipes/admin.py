@@ -13,9 +13,14 @@ class UserAdmin(admin.ModelAdmin):
 
 
 class RecipeAdmin(admin.ModelAdmin):
-    list_display = ('name', 'author',)
+    list_display = ('name', 'author', 'added_to_favorite')
     list_filter = ('name', 'author__username', 'tags__name',)
     inlines = (IngredientRecipeInline,)
+
+    def added_to_favorite(self, obj):
+        return obj.favorite.all().count()
+
+    added_to_favorite.short_description = 'Добавлено в избранное'
 
 
 class IngredientAdmin(admin.ModelAdmin):
