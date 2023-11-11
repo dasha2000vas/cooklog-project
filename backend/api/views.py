@@ -10,13 +10,13 @@ from rest_framework.viewsets import ModelViewSet
 
 from .filters import RecipeFilter
 from .mixins import (
-    CreateDestroyAddViewSet, CreateDestroySubscribeViewSet, ListRetrieveViewSet
+    CreateDestroyRelationshipViewSet, ListRetrieveViewSet
 )
 from .permissions import IsAuthorOrReadOnly
-from .renderes import ShoppingCartRenderer
 from .serializers import (
     IngredientSerializer,
     FavoriteSerializer,
+    RecipeAddSerializer,
     RecipeGetSerializer,
     RecipePostSerializer,
     ShoppingCartSerializer,
@@ -24,9 +24,14 @@ from .serializers import (
     TagSerializer,
     UserSubscribeSerializer
 )
+from .utils import DownloadShoppingCartMixin
 from recipes.models import (
-    Ingredient, IngredientRecipe, AddedToFavorite,
-    Recipe, ShoppingСart, Subscribe, Tag
+    Ingredient,
+    AddedToFavorite,
+    Recipe,
+    ShoppingСart,
+    Subscribe,
+    Tag
 )
 
 User = get_user_model()
@@ -54,14 +59,11 @@ class CustomUserViewSet(UserViewSet):
         )
         subscriptions = User.objects.filter(id__in=sub_id)
         page = self.paginate_queryset(subscriptions)
-        if page is not None:
-            serializer = UserSubscribeSerializer(
-                instance=page, many=True, context={'request': request}
-            )
-            return self.get_paginated_response(serializer.data)
         serializer = UserSubscribeSerializer(
             instance=page, many=True, context={'request': request}
         )
+        if page is not None:
+            return self.get_paginated_response(serializer.data)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -71,7 +73,7 @@ class TagViewSet(ListRetrieveViewSet):
     pagination_class = None
 
 
-class RecipeViewSet(ModelViewSet):
+class RecipeViewSet(ModelViewSet, DownloadShoppingCartMixin):
     queryset = Recipe.objects.all()
     permission_classes = (IsAuthorOrReadOnly,)
     filter_backends = (DjangoFilterBackend,)
@@ -81,7 +83,7 @@ class RecipeViewSet(ModelViewSet):
     def get_serializer_class(self):
         if self.request.method == 'GET':
             return RecipeGetSerializer
-        elif self.request.method == 'POST' or 'PATCH':
+        elif self.request.method in ['POST', 'PATCH']:
             return RecipePostSerializer
 
     def filter_queryset(self, queryset):
@@ -125,45 +127,9 @@ class RecipeViewSet(ModelViewSet):
             recipe.data, status=status.HTTP_200_OK
         )
 
-    @action(
-        detail=False,
-        methods=['get'],
-        permission_classes=(IsAuthenticated,),
-        renderer_classes=(ShoppingCartRenderer,)
-    )
-    def download_shopping_cart(self, request):
-        recipes = request.user.shopping_cart.all()
-        cart = []
-        for recipe in recipes:
-            ingredients = recipe.ingredients.all()
-            for ingredient in ingredients:
-                amount = IngredientRecipe.objects.get(
-                    recipe=recipe, ingredient=ingredient
-                ).amount
-                if (len(cart)) == 0:
-                    cart.append({
-                        'name': ingredient.name,
-                        'amount': amount,
-                        'measurement_unit': ingredient.measurement_unit
-                    })
-                else:
-                    result = False
-                    for i in range(0, len(cart)):
-                        if ingredient.name == cart[i]['name']:
-                            cart[i]['amount'] += amount
-                            result = True
-                    if not result:
-                        cart.append({
-                            'name': ingredient.name,
-                            'amount': amount,
-                            'measurement_unit': ingredient.measurement_unit
-                        })
-        return Response(cart)
 
-
-class ShoppingCartViewSet(CreateDestroyAddViewSet):
+class ShoppingCartViewSet(CreateDestroyRelationshipViewSet):
     serializer_class = ShoppingCartSerializer
-    permission_classes = (IsAuthenticated,)
 
     def get_object(self):
         return get_object_or_404(
@@ -172,10 +138,26 @@ class ShoppingCartViewSet(CreateDestroyAddViewSet):
             recipe=Recipe.objects.get(id=self.kwargs['recipe_pk'])
         )
 
+    def create(
+        self, request, *args, **kwargs
+    ):
+        return super().create(
+            request,
+            field='recipe',
+            key='recipe_pk',
+            post_serializer=RecipeAddSerializer,
+            model=Recipe,
+            *args,
+            **kwargs)
 
-class FavoriteViewSet(CreateDestroyAddViewSet):
+    def delete(self, request, *args, **kwargs):
+        return super().delete(
+            request, model=Recipe, key='recipe_pk', *args, **kwargs
+        )
+
+
+class FavoriteViewSet(CreateDestroyRelationshipViewSet):
     serializer_class = FavoriteSerializer
-    permission_classes = (IsAuthenticated,)
 
     def get_object(self):
         return get_object_or_404(
@@ -184,16 +166,51 @@ class FavoriteViewSet(CreateDestroyAddViewSet):
             recipe=Recipe.objects.get(id=self.kwargs['recipe_pk'])
         )
 
+    def create(
+        self, request, *args, **kwargs
+    ):
+        return super().create(
+            request,
+            field='recipe',
+            key='recipe_pk',
+            post_serializer=RecipeAddSerializer,
+            model=Recipe,
+            *args,
+            **kwargs)
 
-class SubscribeViewSet(CreateDestroySubscribeViewSet):
+    def delete(self, request, *args, **kwargs):
+        return super().delete(
+            request, model=Recipe, key='recipe_pk', *args, **kwargs
+        )
+
+
+class SubscribeViewSet(CreateDestroyRelationshipViewSet):
     serializer_class = SubscribeSerializer
-    permission_classes = (IsAuthenticated,)
 
     def get_object(self):
         return get_object_or_404(
             Subscribe,
             user=self.request.user,
             subscribed=User.objects.get(id=self.kwargs['user_pk'])
+        )
+
+    def create(
+        self, request, *args, **kwargs
+    ):
+        get_object_or_404(User, id=self.kwargs['user_pk'])
+        return super().create(
+            request,
+            field='subscribed',
+            key='user_pk',
+            post_serializer=UserSubscribeSerializer,
+            model=User,
+            *args,
+            **kwargs
+        )
+
+    def delete(self, request, *args, **kwargs):
+        return super().delete(
+            request, model=User, key='user_pk', *args, **kwargs
         )
 
 

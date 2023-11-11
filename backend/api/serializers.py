@@ -52,7 +52,10 @@ class RecipeAddSerializer(serializers.ModelSerializer):
 class UserSubscribeSerializer(serializers.ModelSerializer):
     is_subscribed = serializers.SerializerMethodField()
     recipes = serializers.SerializerMethodField()
-    recipes_count = serializers.SerializerMethodField()
+    recipes_count = serializers.IntegerField(
+        source='recipes.count',
+        read_only=True
+    )
 
     class Meta:
         model = User
@@ -73,14 +76,13 @@ class UserSubscribeSerializer(serializers.ModelSerializer):
 
     def get_recipes(self, obj):
         try:
-            i = int(self.context['request'].query_params['recipes_limit'])
-            recipes = obj.recipes.all()[:i]
+            recipes_limit = (
+                int(self.context['request'].query_params['recipes_limit'])
+            )
+            recipes = obj.recipes.all()[:recipes_limit]
         except KeyError:
             recipes = obj.recipes.all()
         return RecipeAddSerializer(recipes, many=True).data
-
-    def get_recipes_count(self, obj):
-        return len(obj.recipes.all())
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -143,6 +145,21 @@ class Base64ImageField(serializers.ImageField):
         return super().to_internal_value(data)
 
 
+def irngredientrecipe_create(ingredients, instance):
+    relationship = []
+    for ingredient_in_recipe in ingredients:
+        ingredient = ingredient_in_recipe['id']
+        amount = ingredient_in_recipe['amount']
+        relationship.append(
+            IngredientRecipe(
+                recipe=instance,
+                ingredient_id=ingredient,
+                amount=amount
+            )
+        )
+    IngredientRecipe.objects.bulk_create(relationship)
+
+
 class RecipePostSerializer(serializers.ModelSerializer):
     tags = serializers.PrimaryKeyRelatedField(
         queryset=Tag.objects.all(),
@@ -173,75 +190,54 @@ class RecipePostSerializer(serializers.ModelSerializer):
         try:
             attrs['ingredients']
         except KeyError:
-            raise ValidationError()
+            raise ValidationError('Пожалуйста, добавьте ингредиенты')
         try:
             attrs['tags']
         except KeyError:
-            raise ValidationError()
+            raise ValidationError('Пожалуйста. добавьте теги')
         return super().validate(attrs)
 
-    def validate_ingredients(self, lst):
-        if len(lst) == 0:
+    def validate_ingredients(self, values):
+        if len(values) == 0:
             raise ValidationError(
                 'Пожалуйста, укажите хотя бы один ингредиент'
             )
-        temp = []
-        for ingr in lst:
-            if ingr['id'] not in temp:
-                temp.append(ingr['id'])
+        ids = []
+        for value in values:
+            if value['id'] not in ids:
+                ids.append(value['id'])
             else:
                 raise ValidationError('Ингредиенты не должны повторятся')
-        return lst
+        return values
 
-    def validate_tags(self, lst):
-        if len(lst) == 0:
+    def validate_tags(self, values):
+        if len(values) == 0:
             raise ValidationError('Пожалуйста, укажите хотя бы один тег')
-        if len(lst) == len(set(lst)):
-            return lst
+        if len(values) == len(set(values)):
+            return values
         raise ValidationError('Теги не должны повторятся')
 
     def create(self, validated_data):
         ingredients = validated_data.pop('ingredients')
         tags = validated_data.pop('tags')
         recipe = Recipe.objects.create(**validated_data)
-        for ingredient_in_recipe in ingredients:
-            ingredient = get_object_or_404(
-                Ingredient, id=ingredient_in_recipe['id']
-            )
-            amount = ingredient_in_recipe['amount']
-            IngredientRecipe.objects.create(
-                recipe=recipe,
-                ingredient=ingredient,
-                amount=amount
-            )
+        irngredientrecipe_create(
+            ingredients=ingredients,
+            instance=recipe
+        )
         recipe.tags.set(tags)
         return recipe
 
     def update(self, instance, validated_data):
-        instance.image = validated_data.get('image', instance.image)
-        instance.name = validated_data.get('name', instance.name)
-        instance.text = validated_data.get('text', instance.text)
-        instance.cooking_time = validated_data.get(
-            'cooking_time', instance.cooking_time
-        )
-        tags = validated_data.pop('tags')
-        ingredients = validated_data.pop('ingredients')
         instance.tags.clear()
-        instance.tags.set(tags)
+        ingredients = validated_data.pop('ingredients')
         instance.ingredients.clear()
-        for ingredient_in_recipe in ingredients:
-            print(ingredient_in_recipe)
-            ingredient = get_object_or_404(
-                Ingredient, id=ingredient_in_recipe['id']
-            )
-            amount = ingredient_in_recipe['amount']
-            IngredientRecipe.objects.create(
-                recipe=instance,
-                ingredient=ingredient,
-                amount=amount
-            )
+        irngredientrecipe_create(
+            ingredients=ingredients,
+            instance=instance
+        )
         instance.save()
-        return instance
+        return super().update(instance, validated_data)
 
 
 class RecipeGetSerializer(serializers.ModelSerializer):
@@ -268,7 +264,7 @@ class RecipeGetSerializer(serializers.ModelSerializer):
         )
 
     def get_ingredients(self, obj):
-        context = getattr(self, 'context', None) or {}
+        context = getattr(self, 'context', {})
         context['recipe'] = obj
         return IngredientGetSerializer(
             obj.ingredients.all(), many=True, context=context
