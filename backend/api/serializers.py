@@ -2,6 +2,7 @@ import base64
 
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
+from django.db.transaction import atomic
 from djoser.serializers import (
     UserCreateSerializer, UserSerializer
 )
@@ -105,16 +106,20 @@ class IngredientPostSerializer(serializers.Serializer):
 
     def validate_id(self, value):
         if not value:
-            raise ValidationError('Пожалуйста, добавьте ингредиент')
+            raise ValidationError('Пожалуйста, добавьте ингредиенты')
         try:
             Ingredient.objects.get(id=value)
         except Ingredient.DoesNotExist:
-            raise ValidationError('Такого ингредиента нет в списке')
+            raise ValidationError(
+                'Пожалуйста, выбирайте только ингредиенты из списка'
+            )
         return value
 
     def validate_amount(self, value):
         if not value:
-            raise ValidationError('Пожалуйста, укажите количество ингредиента')
+            raise ValidationError(
+                'Пожалуйста, укажите количество всех ингредиентов'
+            )
         return value
 
 
@@ -148,16 +153,30 @@ class Base64ImageField(serializers.ImageField):
 def irngredientrecipe_create(ingredients, instance):
     relationship = []
     for ingredient_in_recipe in ingredients:
-        ingredient = ingredient_in_recipe['id']
-        amount = ingredient_in_recipe['amount']
         relationship.append(
             IngredientRecipe(
                 recipe=instance,
-                ingredient_id=ingredient,
-                amount=amount
+                ingredient_id=ingredient_in_recipe['id'],
+                amount=ingredient_in_recipe['amount']
             )
         )
     IngredientRecipe.objects.bulk_create(relationship)
+
+
+def validate_dublicate(values, object, model):
+    ids = []
+    for value in values:
+        try:
+            id = value.id
+        except AttributeError:
+            id = value['id']
+        if id not in ids:
+            ids.append(id)
+        else:
+            raise ValidationError(
+                f'{object} {model.objects.get(id=id)}'
+                'повторяется. Пожалуйста, удалите дубликат'
+            )
 
 
 class RecipePostSerializer(serializers.ModelSerializer):
@@ -194,7 +213,7 @@ class RecipePostSerializer(serializers.ModelSerializer):
         try:
             attrs['tags']
         except KeyError:
-            raise ValidationError('Пожалуйста. добавьте теги')
+            raise ValidationError('Пожалуйста, добавьте теги')
         return super().validate(attrs)
 
     def validate_ingredients(self, values):
@@ -202,21 +221,23 @@ class RecipePostSerializer(serializers.ModelSerializer):
             raise ValidationError(
                 'Пожалуйста, укажите хотя бы один ингредиент'
             )
-        ids = []
-        for value in values:
-            if value['id'] not in ids:
-                ids.append(value['id'])
-            else:
-                raise ValidationError('Ингредиенты не должны повторятся')
+        validate_dublicate(
+            values=values,
+            object='Ингредиент',
+            model=Ingredient
+        )
         return values
 
     def validate_tags(self, values):
         if len(values) == 0:
             raise ValidationError('Пожалуйста, укажите хотя бы один тег')
-        if len(values) == len(set(values)):
-            return values
-        raise ValidationError('Теги не должны повторятся')
+        validate_dublicate(
+            values=values,
+            object='Тег',
+            model=Tag)
+        return values
 
+    @atomic
     def create(self, validated_data):
         ingredients = validated_data.pop('ingredients')
         tags = validated_data.pop('tags')
@@ -228,6 +249,7 @@ class RecipePostSerializer(serializers.ModelSerializer):
         recipe.tags.set(tags)
         return recipe
 
+    @atomic
     def update(self, instance, validated_data):
         instance.tags.clear()
         ingredients = validated_data.pop('ingredients')

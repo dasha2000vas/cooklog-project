@@ -86,17 +86,6 @@ class RecipeViewSet(ModelViewSet, DownloadShoppingCartMixin):
         elif self.request.method in ['POST', 'PATCH']:
             return RecipePostSerializer
 
-    def filter_queryset(self, queryset):
-        if (
-            self.request.user.is_anonymous
-            and (
-                'is_in_shopping_cart' in self.request.query_params
-                or 'is_favorited' in self.request.query_params
-            )
-        ):
-            return super().get_queryset()
-        return super().filter_queryset(queryset)
-
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)

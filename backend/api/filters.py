@@ -35,14 +35,16 @@ class RecipeFilter(filters.FilterSet):
 
     def filter_shopping_cart(self, queryset, name, value):
         user = self.request.user
+        if user.is_anonymous:
+            return queryset
         if int(value):
             return queryset.filter(shopping_cart=user)
-        elif not int(value):
-            return queryset.exclude(shopping_cart=user)
+        return queryset.exclude(shopping_cart=user)
 
     def filter_favorite(self, queryset, name, value):
         user = self.request.user
+        if user.is_anonymous:
+            return queryset
         if int(value):
             return queryset.filter(favorite=user)
-        elif not int(value):
-            return queryset.exclude(favorite=user)
+        return queryset.exclude(favorite=user)

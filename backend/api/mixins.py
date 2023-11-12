@@ -44,12 +44,6 @@ class CreateDestroyRelationshipViewSet(
         serializer.save(user=self.request.user)
 
     def delete(self, request, model, key, *args, **kwargs):
-        '''
-        Сначала проверяется, существует ли объект(рецепт или автор),
-        если нет, выбрасывается ошибка 404.
-        Далее - существует ли связь текущего пользователя
-        с этим объектом. Если нет, выходит ошибка 400.
-        '''
         get_object_or_404(model, id=self.kwargs[key])
         try:
             self.get_object()
