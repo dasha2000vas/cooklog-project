@@ -120,6 +120,11 @@ class IngredientPostSerializer(serializers.Serializer):
             raise ValidationError(
                 'Пожалуйста, укажите количество всех ингредиентов'
             )
+        if value < 1:
+            raise ValidationError(
+                'Убедитесь, что количество любого ингредиента'
+                'больше либо равно 1.'
+            )
         return value
 
 
