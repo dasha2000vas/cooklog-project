@@ -106,7 +106,10 @@ class IngredientRecipe(models.Model):
         Ingredient,
         on_delete=models.CASCADE,
         verbose_name='Ингредиент')
-    amount = models.IntegerField('Количество')
+    amount = models.IntegerField(
+        'Количество',
+        validators=[MinValueValidator(1)]
+    )
 
     class Meta:
         verbose_name_plural = 'Ингредиенты'
