@@ -113,6 +113,7 @@ class IngredientRecipe(models.Model):
 
     class Meta:
         verbose_name_plural = 'Ингредиенты'
+        unique_together = ('recipe', 'ingredient')
 
 
 class AddedToFavorite(models.Model):
