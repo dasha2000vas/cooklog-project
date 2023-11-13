@@ -122,7 +122,7 @@ class IngredientPostSerializer(serializers.Serializer):
             )
         if value < 1:
             raise ValidationError(
-                'Убедитесь, что количество любого ингредиента'
+                'Убедитесь, что количество любого ингредиента '
                 'больше либо равно 1.'
             )
         return value
@@ -179,7 +179,7 @@ def validate_dublicate(values, object, model):
             ids.append(id)
         else:
             raise ValidationError(
-                f'{object} {model.objects.get(id=id)}'
+                f'{object} {model.objects.get(id=id).name} '
                 'повторяется. Пожалуйста, удалите дубликат'
             )
 
