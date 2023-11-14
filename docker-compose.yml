@@ -14,7 +14,7 @@ services:
       - pg_data:/var/lib/postgresql/data
 
   backend:
-    build: ../backend/
+    image: dasha2000/foodgram_backend
     env_file: .env
     volumes:
       - static:/backend_static
@@ -23,7 +23,7 @@ services:
       - db
 
   frontend:
-    build: ../frontend
+    image: dasha2000/foodgram_frontend
     env_file: .env
     volumes:
       - ../frontend/:/app/result_build/

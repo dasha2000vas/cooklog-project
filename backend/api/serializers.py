@@ -212,13 +212,22 @@ class RecipePostSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         try:
-            attrs['ingredients']
+            ingredients = attrs['ingredients']
         except KeyError:
             raise ValidationError('Пожалуйста, добавьте ингредиенты')
         try:
-            attrs['tags']
+            tags = attrs['tags']
         except KeyError:
             raise ValidationError('Пожалуйста, добавьте теги')
+        validate_dublicate(
+            values=ingredients,
+            object='Ингредиент',
+            model=Ingredient
+        )
+        validate_dublicate(
+            values=tags,
+            object='Тег',
+            model=Tag)
         return super().validate(attrs)
 
     def validate_ingredients(self, values):
@@ -226,20 +235,11 @@ class RecipePostSerializer(serializers.ModelSerializer):
             raise ValidationError(
                 'Пожалуйста, укажите хотя бы один ингредиент'
             )
-        validate_dublicate(
-            values=values,
-            object='Ингредиент',
-            model=Ingredient
-        )
         return values
 
     def validate_tags(self, values):
         if len(values) == 0:
             raise ValidationError('Пожалуйста, укажите хотя бы один тег')
-        validate_dublicate(
-            values=values,
-            object='Тег',
-            model=Tag)
         return values
 
     @atomic
