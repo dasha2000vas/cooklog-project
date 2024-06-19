@@ -72,7 +72,11 @@ sudo docker compose exec backend python manage.py load_data
 ---
 
 ## Автор:
-Василевская Дарья
+
+* Василевская Дарья
+* GitHub: https://github.com/dasha2000vas
+* Телеграм: https://t.me/vasdascha
+* Почта: vasilevsckaya.dascha@yandex.ru
 
 ---
 
